@@ -102,23 +102,24 @@ class Node:
     
     def calc_heuristic(self, problem):
         h = 0
-        ##### can be optimized to have two sets of double for loops while keeping track of a list of coords #####
-        ##### i would change this for if we expand past 3x3 grids #####
+        target_coords = {}
         for row in range(len(problem.goal_state)):
             for column in range(len(problem.goal_state[0])):
-                # inside checker that finds other values position
-                if self.data[row][column] != problem.goal_state[row][column]:
-                    for search_row in range(len(problem.goal_state)):
-                        for search_column in range(len(problem.goal_state[0])):
-                            if self.data[row][column] == problem.goal_state[search_row][search_column]:
-                                h += (np.sqrt((row - search_row)**2 + (column - search_column)**2))
+                val = problem.goal_state[row][column]
+                if val > 0:
+                    target_coords[val] = (row, column)
+        for row in range(len(self.data)):
+            for column in range(len(self.data[0])):
+                val = self.data[row][column]
+                if val > 0:
+                    h += abs(row - target_coords[val][0]) + abs(column - target_coords[val][1])
         return h
     
     def calc_misplaced_tiles(self, problem):
         h = 0
         for row in range(len(problem.goal_state)):
             for column in range(len(problem.goal_state[0])):
-                if self.data[row][column] != problem.goal_state[row][column] and self.data[row][column] != 0:
+                if self.data[row][column] != problem.goal_state[row][column] and self.data[row][column] > 0:
                     h += 1
         return h
 
@@ -176,12 +177,12 @@ def print_puzzle(state, heuristic_choice=1, path_cost=0, euclidean_cost=0, mispl
 def main():
     puzzle = [
         [-1, -1, -1,  0, -1,  0, -1,  0, -1, -1],
-    [ 1,  2,  3,  4, 5,  6,  7,  8,  0, 9]
+    [ 2, 1, 3, 4, 5, 6, 7, 8, 9, 0]
     ]
     print("Enter your choice of algorithm")
     print("1 - Uniform cost search")
     print("2 - A* with misplaced tile heuristic")
-    print("3 - A* with euclidean distance heuristic")
+    print("3 - A* with Manhattan distance heuristic")
     choice = int(input())
     
     prob = Problem(puzzle)
