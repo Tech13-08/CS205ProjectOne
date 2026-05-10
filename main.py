@@ -120,7 +120,7 @@ class Node:
 
         return children
     
-    def calc_heuristic(self, problem):
+    def calc_manhattan_distance(self, problem):
         """Manhattan Distance: sum of absolute horizontal and vertical distances for all 9 men"""
         h = 0
         target_coords = {}
@@ -171,7 +171,7 @@ def general_search(problem, queueing_function):
                 elif queueing_function == 2:
                     child.total_cost = child.path_cost + child.calc_misplaced_tiles(problem)
                 elif queueing_function == 3:
-                    child.total_cost = child.path_cost + child.calc_heuristic(problem)
+                    child.total_cost = child.path_cost + child.calc_manhattan_distance(problem)
 
                 heapq.heappush(nodes, child)
         
@@ -199,20 +199,58 @@ def print_puzzle(state, heuristic_choice=1, path_cost=0, manhattan_cost=0, mispl
         print(' '.join(str(x) for x in row))
 
 
+def get_user_grid(rows, cols, label="state"):
+    print(f"\nEnter your {rows}x{cols} {label} row by row.")
+    print("Use 1-9 for men, 0 for blanks, and -1 for walls.")
+    grid = []
+    for i in range(rows):
+        while True:
+            row_input = input(f"Row {i+1}: ").split()
+            if len(row_input) == cols:
+                grid.append([int(x) for x in row_input])
+                break
+            print(f"Error: Row must have exactly {cols} numbers. Try again.")
+    return grid
 
 def main():
-    puzzle = [
-    [-1, -1, -1,  1, -1,  2, -1,  3, -1, -1], # Recesses are filled with 1, 2, 3
-    [ 0,  0,  0, -1, -1, -1, -1, -1, -1,  0]  # The "path" is blocked by walls or dead-ends
-]
-    print("Enter your choice of algorithm")
+    # Default puzzle
+    default_puzzle = [
+        [-1, -1, -1,  0, -1,  0, -1,  0, -1, -1],
+        [ 2,  3,  1,  4,  5,  6,  7,  8,  9,  0]
+    ]
+
+    print("Welcome to CS205 Search Algorithm Project.")
+    print("Type '1' to use the default puzzle, or '2' to enter your own.")
+    init_choice = input()
+
+    if init_choice == '2':
+        try:
+            rows = int(input("Enter number of rows: "))
+            cols = int(input("Enter number of columns: "))
+            
+            initial_puzzle = get_user_grid(rows, cols, "INITIAL state")
+            
+            goal_puzzle = get_user_grid(rows, cols, "GOAL state")
+            
+            puzzle_data = (initial_puzzle, goal_puzzle)
+                
+        except ValueError:
+            print("Error: Please enter valid integers.")
+            return
+    else:
+        puzzle = default_puzzle
+
+    print("\nEnter your choice of algorithm")
     print("1 - Uniform cost search")
     print("2 - A* with misplaced tile heuristic")
     print("3 - A* with Manhattan distance heuristic")
-    choice = int(input())
     
-    prob = Problem(puzzle)
-    general_search(prob, choice)
+    try:
+        algo_choice = int(input())
+        prob = Problem(puzzle)
+        general_search(prob, algo_choice)
+    except ValueError:
+        print("Invalid input. Please enter a number.")
 
 if __name__ == "__main__":
     main()
