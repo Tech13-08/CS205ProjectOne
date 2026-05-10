@@ -59,9 +59,9 @@ class Node:
         # data is the 2D matrix
         self.data = data
 
-        self.zero_position = self._find_zero()
+        self.zero_positions = self._find_zeros()
 
-    def _find_zero(self):
+    def _find_zeros(self):
         zeros = []
         for r in range(len(self.data)):
             for c in range(len(self.data[0])):
@@ -71,7 +71,7 @@ class Node:
     
     def __lt__(self, other):
         if self.total_cost == other.total_cost:
-            return self.zero_position[0] < other.zero_position[0] or self.zero_position[1] < other.zero_position[1]
+            return self.depth > other.depth 
         return self.total_cost < other.total_cost
 
     def expand_node(self):
@@ -176,7 +176,7 @@ def print_puzzle(state, heuristic_choice=1, path_cost=0, euclidean_cost=0, mispl
 def main():
     puzzle = [
         [-1, -1, -1,  0, -1,  0, -1,  0, -1, -1],
-    [ 1,  2,  3,  4,  5,  6,  7,  8,  0,  9]
+    [ 1,  2,  3,  4, 5,  6,  7,  8,  0, 9]
     ]
     print("Enter your choice of algorithm")
     print("1 - Uniform cost search")
