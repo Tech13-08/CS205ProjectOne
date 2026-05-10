@@ -5,9 +5,8 @@ import copy
 class Problem:
     def __init__(self, initial_state):
         self.goal_state = [
-            [1, 2, 3],
-            [4, 5, 6],
-            [7, 8, 0]
+            [-1, -1, -1,  0, -1,  0, -1,  0, -1, -1],
+            [ 1,  2,  3,  4,  5,  6,  7,  8,  9,  0]
         ]   
         self.initial_state = initial_state
 
@@ -63,11 +62,12 @@ class Node:
         self.zero_position = self._find_zero()
 
     def _find_zero(self):
+        zeros = []
         for r in range(len(self.data)):
             for c in range(len(self.data[0])):
                 if self.data[r][c] == 0:
-                    return (r, c)
-        return None
+                    zeros.append((r, c))
+        return zeros
     
     def __lt__(self, other):
         if self.total_cost == other.total_cost:
@@ -84,16 +84,19 @@ class Node:
             "right": (0, 1)
         }
 
-        for action, (dx, dy) in directions.items():
-            new_row = self.zero_position[0] + dx
-            new_col = self.zero_position[1] + dy
-            if 0 <= new_row < len(self.data) and 0 <= new_col < len(self.data[0]):
-                new_data = [row[:] for row in self.data]
-                new_data[self.zero_position[0]][self.zero_position[1]], new_data[new_row][new_col] = (
-                    new_data[new_row][new_col],
-                    new_data[self.zero_position[0]][self.zero_position[1]]
-                )
-                children.append(Node(new_data, self, depth, self.path_cost + 1, action))
+        for row, column in self._find_zeros():
+            for action, (dx, dy) in directions.items():
+                new_row = row + dx
+                new_col = column + dy
+                if 0 <= new_row < len(self.data) and 0 <= new_col < len(self.data[0]):
+                    if self.data[new_row][new_col] == -1:
+                        continue
+                    new_data = [row[:] for row in self.data]
+                    new_data[row][column], new_data[new_row][new_col] = (
+                        new_data[new_row][new_col],
+                        new_data[row][column]
+                    )
+                    children.append(Node(new_data, self, depth, self.path_cost + 1, action))
 
         return children
     
@@ -171,7 +174,10 @@ def print_puzzle(state, heuristic_choice=1, path_cost=0, euclidean_cost=0, mispl
 
 
 def main():
-    puzzle = [[1, 2, 3], [4, 8, 0], [7, 6, 5]]
+    puzzle = [
+        [-1, -1, -1,  0, -1,  0, -1,  0, -1, -1],
+    [ 1,  2,  3,  4,  5,  6,  7,  8,  0,  9]
+    ]
     print("Enter your choice of algorithm")
     print("1 - Uniform cost search")
     print("2 - A* with misplaced tile heuristic")
