@@ -1,4 +1,3 @@
-
 import numpy as np
 import heapq
 import copy
@@ -11,41 +10,9 @@ class Problem:
             [7, 8, 0]
         ]   
         self.initial_state = initial_state
-        self.total_expanded = 0
-        self.max_queue_size = 1
-        self.goal_depth = 0
-    
-    def search(self, heuristic):
-        self.total_expanded = 0
-        self.max_queue_size = 1
-        self.goal_depth = 0
-        myGraph = Graph(self.initial_state)
-        while myGraph.frontier:
-            node = myGraph.pop_frontier()
-
-            if node.data == self.goal_state:
-                self.goal_depth = node.depth
-                self.print_solution(node, heuristic)
-                return
-            
-            myGraph.mark_as_visited(node)
-            self.total_expanded += 1
-            for child in node.expand_node(): 
-                if not myGraph.is_visited(child):
-                    if heuristic == 1:
-                        child.total_cost = child.path_cost
-                    elif heuristic == 2:
-                        child.total_cost = child.path_cost + child.calc_misplaced_tiles(self)
-                    elif heuristic == 3:
-                        child.total_cost = child.path_cost + child.calc_heuristic(self)
-
-                    myGraph.add_to_frontier(child)
-            
-            self.max_queue_size = max(self.max_queue_size, len(myGraph.frontier))
-
 
    # prints backtracked solution for extra credit              
-    def print_solution(self, node, heuristic_choice):
+    def print_solution(self, node, queueing_function, total_expanded=0, max_queue_size=0, goal_depth=0):
         path = []
         actions = []
         path_costs = []
@@ -66,25 +33,24 @@ class Problem:
         for idx, state in enumerate(reversed(path)):
             is_root = idx == 0
             is_goal = iterator == 0
-            print_puzzle(state, heuristic_choice, path_costs[iterator], euclidean_costs[iterator], misplaced_costs[iterator], is_root=is_root, is_goal=is_goal)
+            print_puzzle(state, queueing_function, path_costs[iterator], euclidean_costs[iterator], misplaced_costs[iterator], is_root=is_root, is_goal=is_goal)
             iterator -= 1
             print()
 
-        if heuristic_choice == 3 or heuristic_choice == 2 or heuristic_choice == 1:
+        if queueing_function == 3 or queueing_function == 2 or queueing_function == 1:
             actions = list(reversed(actions))
             print("Sequence of actions to reach the goal:")
             for i, action in enumerate(actions, 1):
                 print(f"Step {i}: {action}")
 
         print("Goal!!!")
-        print(f"To solve this problem the search algorithm expanded a total of {self.total_expanded} nodes.")
-        print(f"The maximum number of nodes in the queue at any one time: {self.max_queue_size}.")
-        print(f"The depth of the goal node was {self.goal_depth}.")
+        print(f"To solve this problem the search algorithm expanded a total of {total_expanded} nodes.")
+        print(f"The maximum number of nodes in the queue at any one time: {max_queue_size}.")
+        print(f"The depth of the goal node was {goal_depth}.")
 
 
 class Node:
-    def __init__(self, data, zero_position = (0, 1), parent=None, depth=0, path_cost=0, action=None):
-        self.zero_position = zero_position
+    def __init__(self, data, parent=None, depth=0, path_cost=0, action=None):
         self.parent = parent
         self.path_cost = path_cost
         self.total_cost = path_cost
@@ -93,6 +59,15 @@ class Node:
 
         # data is the 2D matrix
         self.data = data
+
+        self.zero_position = self._find_zero()
+
+    def _find_zero(self):
+        for r in range(len(self.data)):
+            for c in range(len(self.data[0])):
+                if self.data[r][c] == 0:
+                    return (r, c)
+        return None
     
     def __lt__(self, other):
         if self.total_cost == other.total_cost:
@@ -118,7 +93,7 @@ class Node:
                     new_data[new_row][new_col],
                     new_data[self.zero_position[0]][self.zero_position[1]]
                 )
-                children.append(Node(new_data, (new_row, new_col), self, depth, self.path_cost + 1, action))
+                children.append(Node(new_data, self, depth, self.path_cost + 1, action))
 
         return children
     
@@ -145,34 +120,34 @@ class Node:
         return h
 
 
-class Graph:
-    def __init__(self, initial_state):
-        self.zero_pos = self.find_zero(initial_state)  
-        self.root = Node(initial_state, self.zero_pos, action=None)
-        self.visited = set()
-        self.frontier = []  
+def general_search(problem, queueing_function):
+    total_expanded = 0
+    max_queue_size = 1
+    visited = set()
+    nodes = [Node(problem.initial_state)]
+    while nodes:
+        node = heapq.heappop(nodes)
 
-        heapq.heappush(self.frontier, self.root)
+        if node.data == problem.goal_state:
+            problem.goal_depth = node.depth
+            problem.print_solution(node, queueing_function, total_expanded, max_queue_size, problem.goal_depth)
+            return
+        
+        state = tuple(map(tuple, node.data))
+        if state not in visited:
+            visited.add(state)
+            total_expanded += 1
+            for child in node.expand_node(): 
+                if queueing_function == 1:
+                    child.total_cost = child.path_cost
+                elif queueing_function == 2:
+                    child.total_cost = child.path_cost + child.calc_misplaced_tiles(problem)
+                elif queueing_function == 3:
+                    child.total_cost = child.path_cost + child.calc_heuristic(problem)
 
-    def find_zero(self, state):
-        for row in range(len(state)):
-            for column in range(len(state[0])):
-                if state[row][column] == 0: 
-                    return (row, column)
-                
-    def add_to_frontier(self, node):
-        heapq.heappush(self.frontier, node)
-
-    def pop_frontier(self):
-        return heapq.heappop(self.frontier)
-
-    
-    def mark_as_visited(self, node):
-        self.visited.add(tuple(map(tuple, node.data)))
-
-    def is_visited(self, node):
-        return tuple(map(tuple, node.data)) in self.visited
-
+                heapq.heappush(nodes, child)
+        
+        max_queue_size = max(max_queue_size, len(nodes))
 
 
 # menu functions
@@ -195,178 +170,16 @@ def print_puzzle(state, heuristic_choice=1, path_cost=0, euclidean_cost=0, mispl
 
 
 
-def get_user_puzzle():
-    print("Enter your puzzle, use a zero to represent the blank:")
-    puzzle = []
-    for i in range(3):
-        while True: 
-            try:
-                
-                print(f"Enter row {i + 1} with a space between each number (e.g., '1 2 3')")
-                row = list(map(int, input().split()))  
-                
-                if len(row) != 3:
-                    raise ValueError("Invalid row length.")
-    
-                puzzle.append(row)
-
-                break
-
-            except ValueError:
-                print("Follow instructions please")
-
-            except KeyboardInterrupt:
-                print("\n i guess you wanna leave.... k bye!!!")
-                return
-
-    return puzzle
-
-
 def main():
-
-    ###### TEST CASES ######
-
-
-    print("EXAMPLE CASE IN REPORT DOC")
-    reportDocNode = [
-        [1, 2, 3],
-        [4, 8, 0],
-        [7, 6, 5]
-    ]
-    reportDoc = Problem(reportDocNode)
-    reportDoc.search(1)
-    reportDoc.search(2)
-    reportDoc.search(3)
-
-
-    print("TRIVAL")
-    trivalNode = [
-        [1, 2, 3],
-        [4, 5, 6],
-        [7, 8, 0]
-    ]
-    trival = Problem(trivalNode)
-    trival.search(1)
-    trival.search(2)
-    trival.search(3)
-
-
-    print("VERY EASY")
-    veryEasyNode = [
-        [1, 2, 0],
-        [4, 5, 3],
-        [7, 8, 6]
-    ]
-    veryEasy = Problem(veryEasyNode)
-    veryEasy.search(1)
-    veryEasy.search(2)
-    veryEasy.search(3)
-
-
-    print("EASY")
-    easyNode = [
-        [1, 2, 0],
-        [4, 5, 3],
-        [7, 8, 6]
-    ]
-    easy = Problem(easyNode)
-    easy.search(1)
-    easy.search(2)
-    easy.search(3)
-
-
-    print("DOABLE")
-    doableNode = [
-        [0, 1, 2],
-        [4, 5, 3],
-        [7, 8, 6]
-    ]
-    doable = Problem(doableNode)
-    doable.search(1)
-    doable.search(2)
-    doable.search(3)
-
-
-    print("OH BOY")
-    ohBoyNode = [
-        [8, 7, 1],
-        [6, 0, 2],
-        [5, 4, 3]
-    ]
-    ohBoy = Problem(ohBoyNode)
-    ohBoy.search(1)
-    ohBoy.search(2)
-    ohBoy.search(3)
-
-
-    # print("IMPOSSIBLE")
-    # impossibleNode = [
-    #     [1, 2, 3],
-    #     [4, 5, 6],
-    #     [8, 7, 0]
-    # ]
-    # impossible = Problem(impossibleNode)
-    # impossible.search(1)
-    # impossible.search(2)
-    # impossible.search(3)
-
-
-    ##### END OF TEST CASES #####
-
-    data_choice = 0
-    algo_choice = 0
-
-    puzzle = [
-        [1, 0, 3],
-        [4, 2, 6],
-        [7, 5, 8]
-    ]
-
-    print("Welcome to 8 puzzle solver")
-    print("Type 1 to run example or 2 to enter your own")
-    
-
-    while True:
-        try:
-            data_choice = int(input())
-            if data_choice in [1, 2]:
-                break
-            else:
-                print("That's not an option")
-        except ValueError:
-            print("That's not an integer")
-        except KeyboardInterrupt:
-            print("\n welp i guess you wanna leave....bye!")
-            return
-
-    if data_choice == 2:
-        puzzle = get_user_puzzle()
-
-    problem = Problem(puzzle)
-
-    print("Your puzzle is:")
-    print_puzzle(puzzle, is_root=True)
-
+    puzzle = [[1, 2, 3], [4, 8, 0], [7, 6, 5]]
     print("Enter your choice of algorithm")
     print("1 - Uniform cost search")
     print("2 - A* with misplaced tile heuristic")
     print("3 - A* with euclidean distance heuristic")
+    choice = int(input())
     
-
-    while True:
-        try:
-            algo_choice = int(input())
-            if algo_choice in [1, 2, 3]:
-                break
-            else:
-                print("That's not an option")
-        except ValueError:
-            print("That's not and integer")
-        except KeyboardInterrupt:
-            print("\n welp i guess you wanna leave....bye!")
-            return
-
-    problem.search(algo_choice)
+    prob = Problem(puzzle)
+    general_search(prob, choice)
 
 if __name__ == "__main__":
     main()
